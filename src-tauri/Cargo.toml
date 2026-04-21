@@ -1,0 +1,18 @@
+[package]
+name = "dayly"
+version = "0.1.0"
+description = "Dayly menu bar calendar"
+authors = ["vincent"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.0.2", features = [] }
+
+[dependencies]
+chrono = { version = "0.4.38", default-features = true }
+tauri = { version = "2.8.5", features = ["tray-icon"] }
+tauri-plugin-autostart = "2.2.1"
+tauri-plugin-positioner = { version = "2.3.1", features = ["tray-icon"] }
+
+[features]
+default = []
