@@ -9,10 +9,9 @@ use chrono::{Datelike, Local, Weekday};
 use tauri::{
     menu::{Menu, MenuEvent, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    ActivationPolicy, App, AppHandle, Manager, WebviewWindow, WindowEvent,
+    ActivationPolicy, App, AppHandle, Manager, PhysicalPosition, WebviewWindow, WindowEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
-use tauri_plugin_positioner::{Position, WindowExt};
 
 const MAIN_WINDOW_LABEL: &str = "main";
 
@@ -58,12 +57,13 @@ fn build_tray(app: &App) -> tauri::Result<tauri::tray::TrayIcon> {
             tauri_plugin_positioner::on_tray_event(tray.app_handle(), &event);
 
             if let TrayIconEvent::Click {
+                position,
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
                 ..
             } = event
             {
-                toggle_window(tray.app_handle());
+                toggle_window(tray.app_handle(), Some(position));
             }
         })
         .build(app)
@@ -71,13 +71,13 @@ fn build_tray(app: &App) -> tauri::Result<tauri::tray::TrayIcon> {
 
 fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
     match event.id.as_ref() {
-        "open" => toggle_window(app),
+        "open" => toggle_window(app, None),
         "quit" => app.exit(0),
         _ => {}
     }
 }
 
-fn toggle_window(app: &AppHandle) {
+fn toggle_window(app: &AppHandle, tray_position: Option<PhysicalPosition<f64>>) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
         return;
     };
@@ -87,13 +87,42 @@ fn toggle_window(app: &AppHandle) {
         return;
     }
 
-    show_window(&window);
+    show_window(&window, tray_position);
 }
 
-fn show_window(window: &WebviewWindow) {
-    let _ = window.move_window_constrained(Position::TrayCenter);
+fn show_window(window: &WebviewWindow, tray_position: Option<PhysicalPosition<f64>>) {
+    if let Some(tray_position) = tray_position {
+        let _ = position_window_for_tray_click(window, tray_position);
+    } else {
+        let _ = tauri_plugin_positioner::WindowExt::move_window_constrained(
+            window,
+            tauri_plugin_positioner::Position::TrayCenter,
+        );
+    }
+
     let _ = window.show();
     let _ = window.set_focus();
+}
+
+fn position_window_for_tray_click(
+    window: &WebviewWindow,
+    tray_position: PhysicalPosition<f64>,
+) -> tauri::Result<()> {
+    let Some(monitor) = window.monitor_from_point(tray_position.x, tray_position.y)? else {
+        return Ok(());
+    };
+
+    let window_size = window.outer_size()?;
+    let work_area = monitor.work_area();
+
+    let min_x = work_area.position.x;
+    let max_x = work_area.position.x + work_area.size.width as i32 - window_size.width as i32;
+    let x = (tray_position.x.round() as i32 - window_size.width as i32 / 2).clamp(min_x, max_x);
+    let y = work_area.position.y;
+
+    window.set_position(PhysicalPosition::new(x, y))?;
+
+    Ok(())
 }
 
 fn start_tray_title_loop(tray: tauri::tray::TrayIcon) {
