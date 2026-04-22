@@ -41,7 +41,11 @@ function getInitialLocale(): Locale {
   return savedLocale === 'en' ? 'en' : 'zh';
 }
 
-function getHolidayLabel(name: string) {
+function getHolidayLabel(name: string, locale: Locale) {
+  if (locale === 'zh') {
+    return Array.from(name).slice(0, 2).join('');
+  }
+
   return name;
 }
 
@@ -220,7 +224,14 @@ function App() {
                       .join(' ')}
                   >
                     <div className="day-header">
-                      <span className="day-number">{day.dayNumber}</span>
+                      <div className="day-header-main">
+                        <span className="day-number">{day.dayNumber}</span>
+                        {day.note ? (
+                          <span className={['day-holiday-name', day.note.type].join(' ')}>
+                            {getHolidayLabel(day.note.name, locale)}
+                          </span>
+                        ) : null}
+                      </div>
                       {day.isToday ? <span className="today-tag">{copy.today}</span> : null}
                     </div>
 
@@ -229,7 +240,6 @@ function App() {
                         <span className="day-note-badge">
                           {day.note.type === 'transfer_workday' ? copy.workdayStatus : copy.holidayStatus}
                         </span>
-                        <span className="day-note-name">{getHolidayLabel(day.note.name)}</span>
                       </div>
                     ) : (
                       <div className="day-fade" aria-hidden="true" />
