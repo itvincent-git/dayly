@@ -2,8 +2,39 @@ import { startTransition, useEffect, useMemo, useState } from 'react';
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart';
 import { addMonths, buildCalendarDays, getHolidaysForYear, getMonthLabel, type HolidayMap } from './lib/calendar';
 import { localeStorageKey, messages, type Locale } from './i18n';
+import appIcon from '../src-tauri/icons/app-icon.svg';
 
 type Page = 'calendar' | 'settings';
+
+function SettingsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.9 2.7a1.2 1.2 0 0 1 2.2 0l.5 1.6a7.9 7.9 0 0 1 1.7.7l1.5-.8a1.2 1.2 0 0 1 1.5.3l1.1 1.9a1.2 1.2 0 0 1-.3 1.5l-1.2 1a7.2 7.2 0 0 1 0 2l1.2 1a1.2 1.2 0 0 1 .3 1.5l-1.1 1.9a1.2 1.2 0 0 1-1.5.3l-1.5-.8a7.9 7.9 0 0 1-1.7.7l-.5 1.6a1.2 1.2 0 0 1-2.2 0l-.5-1.6a7.9 7.9 0 0 1-1.7-.7l-1.5.8a1.2 1.2 0 0 1-1.5-.3l-1.1-1.9a1.2 1.2 0 0 1 .3-1.5l1.2-1a7.2 7.2 0 0 1 0-2l-1.2-1a1.2 1.2 0 0 1-.3-1.5l1.1-1.9a1.2 1.2 0 0 1 1.5-.3l1.5.8a7.9 7.9 0 0 1 1.7-.7z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M14.5 5.5 8 12l6.5 6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function getInitialLocale(): Locale {
   const savedLocale = localStorage.getItem(localeStorageKey);
@@ -33,12 +64,6 @@ function App() {
     [days]
   );
 
-  const today = new Date();
-  const todayDay = String(today.getDate()).padStart(2, '0');
-  const todayMeta =
-    locale === 'zh'
-      ? `${today.getFullYear()}年 ${copy.months[today.getMonth()]} · 星期${copy.weekDays[today.getDay()]}`
-      : `${copy.weekDays[today.getDay()]} · ${copy.months[today.getMonth()]} ${today.getFullYear()}`;
   const monthSummary = copy.monthSummary(monthHolidayCount, monthWorkdayCount);
 
   useEffect(() => {
@@ -110,46 +135,25 @@ function App() {
     <main className="shell">
       <section className="window-shell">
         <header className="window-header">
-          <div className="title-stack">
-            {page === 'calendar' ? (
-              <>
-                <p className="eyebrow">{copy.calendarLabel}</p>
-                <div className="display-cluster">
-                  <span className="display-day">{todayDay}</span>
-                  <div className="display-copy">
-                    <p className="display-meta">{todayMeta}</p>
-                    <h1>{getMonthLabel(visibleMonth, locale, copy.months)}</h1>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="eyebrow">{copy.settings}</p>
-                <div className="page-heading">
-                  <h1>{copy.settingsTitle}</h1>
-                  <p className="page-description">{copy.settingsDescription}</p>
-                </div>
-              </>
-            )}
-          </div>
+          <img className="app-icon" src={appIcon} alt={copy.appName} />
 
           {page === 'calendar' ? (
             <button
               type="button"
-              className="secondary-button header-action"
+              className="icon-button header-action"
               onClick={() => setPage('settings')}
               aria-label={copy.openSettings}
             >
-              {copy.settings}
+              <SettingsIcon />
             </button>
           ) : (
             <button
               type="button"
-              className="secondary-button header-action"
+              className="icon-button header-action"
               onClick={() => setPage('calendar')}
               aria-label={copy.backToCalendar}
             >
-              {copy.back}
+              <BackIcon />
             </button>
           )}
         </header>
