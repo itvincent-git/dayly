@@ -71,15 +71,7 @@ button {
   flex-direction: column;
   padding: 22px 14px 14px;
   border-radius: 32px;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(75, 142, 255, 0.15), transparent 28%),
-    radial-gradient(circle at 100% 12%, rgba(249, 54, 44, 0.1), transparent 22%),
-    radial-gradient(circle at 50% 100%, rgba(213, 222, 243, 0.8), transparent 36%),
-    linear-gradient(180deg, rgba(249, 249, 254, 0.8) 0%, rgba(239, 242, 251, 0.88) 100%);
-  box-shadow:
-    0 20px 50px rgba(44, 51, 61, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(28px);
+  background: transparent;
   overflow: hidden;
 }
 
