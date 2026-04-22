@@ -13,8 +13,26 @@ export const messages = {
     today: '今天',
     holiday: '节假日',
     holidayAccent: '法定节假日',
-    holidayCount: (count: number) => `本月 ${count} 个节假日`,
-    noHoliday: '本月暂无法定节假日',
+    workdayAccent: '补班',
+    holidayStatus: '休',
+    workdayStatus: '班',
+    monthSummary: (holidayCount: number, workdayCount: number) => {
+      if (holidayCount === 0 && workdayCount === 0) {
+        return '本月暂无节假日或补班安排';
+      }
+
+      const parts = [];
+
+      if (holidayCount > 0) {
+        parts.push(`${holidayCount} 个节假日`);
+      }
+
+      if (workdayCount > 0) {
+        parts.push(`${workdayCount} 天补班`);
+      }
+
+      return `本月 ${parts.join(' · ')}`;
+    },
     weekendLabel: '周末柔化',
     monthOverview: '悬浮日历视图',
     settings: '设置',
@@ -39,8 +57,26 @@ export const messages = {
     today: 'Today',
     holiday: 'Holiday',
     holidayAccent: 'Public Holidays',
-    holidayCount: (count: number) => `${count} holidays this month`,
-    noHoliday: 'No public holidays this month',
+    workdayAccent: 'Transfer Workdays',
+    holidayStatus: 'OFF',
+    workdayStatus: 'WORK',
+    monthSummary: (holidayCount: number, workdayCount: number) => {
+      if (holidayCount === 0 && workdayCount === 0) {
+        return 'No holiday or transfer workday this month';
+      }
+
+      const parts = [];
+
+      if (holidayCount > 0) {
+        parts.push(`${holidayCount} holidays`);
+      }
+
+      if (workdayCount > 0) {
+        parts.push(`${workdayCount} workdays`);
+      }
+
+      return `${parts.join(' · ')} this month`;
+    },
     weekendLabel: 'Weekend tone shift',
     monthOverview: 'Floating calendar view',
     settings: 'Settings',

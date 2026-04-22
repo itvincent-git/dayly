@@ -13,6 +13,8 @@
   --primary-dim: #004faa;
   --tertiary: #c1000a;
   --tertiary-soft: rgba(193, 0, 10, 0.12);
+  --workday: #9a5b00;
+  --workday-soft: rgba(154, 91, 0, 0.14);
   color: var(--text);
   font-family: "Inter", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", sans-serif;
   color-scheme: light;
@@ -295,6 +297,15 @@ button {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dim) 100%);
 }
 
+.info-pill.holiday-pill {
+  background: linear-gradient(135deg, #d82c35 0%, #b9171f 100%);
+}
+
+.info-pill.workday-pill {
+  color: var(--workday);
+  background: rgba(255, 240, 217, 0.96);
+}
+
 .info-pill.subtle {
   color: var(--text-soft);
   background: rgba(242, 243, 250, 0.92);
@@ -484,10 +495,16 @@ button {
     0 14px 26px rgba(0, 91, 193, 0.08);
 }
 
-.day-cell.holiday {
+.day-cell.public-holiday {
   background:
     linear-gradient(180deg, rgba(249, 54, 44, 0.08), rgba(255, 255, 255, 0.72)),
     rgba(255, 255, 255, 0.78);
+}
+
+.day-cell.transfer-workday {
+  background:
+    linear-gradient(180deg, rgba(243, 171, 51, 0.16), rgba(255, 255, 255, 0.76)),
+    rgba(255, 255, 255, 0.8);
 }
 
 .day-header {
@@ -515,33 +532,56 @@ button {
   background: rgba(0, 91, 193, 0.12);
 }
 
-.holiday-chip {
+.day-note {
   grid-row: 3;
   display: flex;
   align-items: flex-start;
   gap: 7px;
   align-self: end;
   padding: 3px 2px 0 0;
-  color: var(--tertiary);
   font-size: 10px;
   line-height: 1.15;
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
-.holiday-name {
+.day-note.public_holiday {
+  color: var(--tertiary);
+}
+
+.day-note.transfer_workday {
+  color: var(--workday);
+}
+
+.day-note-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  flex: none;
+}
+
+.day-note.public_holiday .day-note-badge {
+  color: var(--tertiary);
+  background: var(--tertiary-soft);
+}
+
+.day-note.transfer_workday .day-note-badge {
+  color: var(--workday);
+  background: var(--workday-soft);
+}
+
+.day-note-name {
   display: -webkit-box;
   overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-}
-
-.holiday-bar {
-  width: 2px;
-  align-self: stretch;
-  border-radius: 999px;
-  background: var(--tertiary);
-  box-shadow: 0 0 0 4px var(--tertiary-soft);
 }
 
 .day-fade {
@@ -669,7 +709,7 @@ button {
     padding: 0 5px;
   }
 
-  .holiday-chip {
+  .day-note {
     gap: 5px;
     font-size: 9px;
     padding-top: 2px;

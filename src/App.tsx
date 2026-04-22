@@ -10,12 +10,8 @@ function getInitialLocale(): Locale {
   return savedLocale === 'en' ? 'en' : 'zh';
 }
 
-function getHolidayLabel(name: string, locale: Locale) {
-  if (locale !== 'zh') {
-    return name;
-  }
-
-  return Array.from(name).slice(0, 2).join('');
+function getHolidayLabel(name: string) {
+  return name;
 }
 
 function App() {
@@ -29,7 +25,11 @@ function App() {
   const copy = messages[locale];
   const days = useMemo(() => buildCalendarDays(visibleMonth, holidays), [visibleMonth, holidays]);
   const monthHolidayCount = useMemo(
-    () => days.filter((day) => day.isCurrentMonth && day.holidayName).length,
+    () => days.filter((day) => day.isCurrentMonth && day.note?.type === 'public_holiday').length,
+    [days]
+  );
+  const monthWorkdayCount = useMemo(
+    () => days.filter((day) => day.isCurrentMonth && day.note?.type === 'transfer_workday').length,
     [days]
   );
 
@@ -39,7 +39,7 @@ function App() {
     locale === 'zh'
       ? `${today.getFullYear()}年 ${copy.months[today.getMonth()]} · 星期${copy.weekDays[today.getDay()]}`
       : `${copy.weekDays[today.getDay()]} · ${copy.months[today.getMonth()]} ${today.getFullYear()}`;
-  const monthSummary = monthHolidayCount > 0 ? copy.holidayCount(monthHolidayCount) : copy.noHoliday;
+  const monthSummary = copy.monthSummary(monthHolidayCount, monthWorkdayCount);
 
   useEffect(() => {
     localStorage.setItem(localeStorageKey, locale);
@@ -161,7 +161,8 @@ function App() {
                 <p className="section-label">{copy.monthOverview}</p>
                 <p className="lead-copy">{monthSummary}</p>
                 <div className="lead-tags">
-                  <span className="info-pill">{copy.holidayAccent}</span>
+                  <span className="info-pill holiday-pill">{copy.holidayAccent}</span>
+                  <span className="info-pill workday-pill">{copy.workdayAccent}</span>
                   <span className="info-pill subtle">{copy.weekendLabel}</span>
                 </div>
               </article>
@@ -208,7 +209,8 @@ function App() {
                       day.isCurrentMonth ? '' : 'muted',
                       day.isWeekend ? 'weekend' : '',
                       day.isToday ? 'today' : '',
-                      day.holidayName ? 'holiday' : ''
+                      day.note?.type === 'public_holiday' ? 'public-holiday' : '',
+                      day.note?.type === 'transfer_workday' ? 'transfer-workday' : ''
                     ]
                       .filter(Boolean)
                       .join(' ')}
@@ -218,10 +220,12 @@ function App() {
                       {day.isToday ? <span className="today-tag">{copy.today}</span> : null}
                     </div>
 
-                    {day.holidayName ? (
-                      <div className="holiday-chip">
-                        <span className="holiday-bar" aria-hidden="true" />
-                        <span className="holiday-name">{getHolidayLabel(day.holidayName, locale)}</span>
+                    {day.note ? (
+                      <div className={['day-note', day.note.type].join(' ')}>
+                        <span className="day-note-badge">
+                          {day.note.type === 'transfer_workday' ? copy.workdayStatus : copy.holidayStatus}
+                        </span>
+                        <span className="day-note-name">{getHolidayLabel(day.note.name)}</span>
                       </div>
                     ) : (
                       <div className="day-fade" aria-hidden="true" />
