@@ -474,11 +474,11 @@ button {
 
 .day-cell.today {
   background:
-    linear-gradient(180deg, #dce3f0, #ffffff),
+    linear-gradient(180deg, rgba(0, 91, 193, 0.24), rgba(224, 236, 249, 0.96)),
     #ffffff;
   box-shadow:
-    inset 0 0 0 1px rgba(0, 91, 193, 0.18),
-    0 14px 26px rgba(0, 91, 193, 0.08);
+    inset 0 0 0 1px rgba(0, 91, 193, 0.28),
+    0 14px 26px rgba(0, 91, 193, 0.12);
 }
 
 .day-cell.public-holiday {
@@ -490,6 +490,18 @@ button {
 .day-cell.transfer-workday {
   background:
     linear-gradient(180deg, rgba(243, 171, 51, 0.2), #ffffff),
+    #ffffff;
+}
+
+.day-cell.today.public-holiday {
+  background:
+    linear-gradient(180deg, rgba(0, 91, 193, 0.24), rgba(249, 54, 44, 0.16) 52%, #ffffff),
+    #ffffff;
+}
+
+.day-cell.today.transfer-workday {
+  background:
+    linear-gradient(180deg, rgba(0, 91, 193, 0.24), rgba(243, 171, 51, 0.22) 52%, #ffffff),
     #ffffff;
 }
 
@@ -514,6 +526,10 @@ button {
   flex: none;
 }
 
+.day-cell.today .day-number {
+  color: var(--primary);
+}
+
 .day-holiday-name {
   min-width: 0;
   overflow: hidden;
@@ -531,18 +547,6 @@ button {
 
 .day-holiday-name.transfer_workday {
   color: var(--workday);
-}
-
-.today-tag {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 0 7px;
-  border-radius: 999px;
-  color: var(--primary);
-  font-size: 10px;
-  font-weight: 700;
-  background: #dfeaf8;
 }
 
 .day-note {
@@ -695,10 +699,6 @@ button {
 
   .day-holiday-name {
     font-size: 9px;
-  }
-
-  .today-tag {
-    padding: 0 5px;
   }
 
   .day-note {

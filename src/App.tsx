@@ -232,7 +232,6 @@ function App() {
                           </span>
                         ) : null}
                       </div>
-                      {day.isToday ? <span className="today-tag">{copy.today}</span> : null}
                     </div>
 
                     {day.note ? (
