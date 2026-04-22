@@ -1,4 +1,58 @@
-# CLAUDE.md
+# AGENTS.md
+
+## Project Snapshot
+
+- App: Dayly, a macOS menu bar calendar app for Chinese public holidays.
+- Runtime: Tauri 2 desktop app with a React 19 + TypeScript + Vite frontend.
+- Package manager: `pnpm`
+- Frontend holiday data: `date-holidays` with `CN` holidays only.
+- Current desktop target: macOS. Autostart behavior is implemented via `@tauri-apps/plugin-autostart` and `tauri-plugin-autostart`.
+
+## What The App Does
+
+- Shows a fixed-size floating calendar window from the tray icon.
+- Tray title displays the current date as `YY-M-D星期X` and refreshes every minute.
+- Main window is transparent, always on top, hidden by default, and removed from the taskbar/dock flow.
+- Clicking the tray icon toggles the window. Losing focus hides the window.
+- UI supports `zh` and `en`.
+- Settings currently cover language switching and launch-at-login.
+
+## Important Files
+
+- `src/App.tsx`: main React UI, page switching, locale persistence, autostart toggle.
+- `src/lib/calendar.ts`: calendar grid generation and holiday loading/cache.
+- `src/i18n.ts`: all localized copy and locale types.
+- `src/styles.css`: full app styling for the floating glassmorphism window.
+- `src-tauri/src/main.rs`: tray behavior, window show/hide logic, activation policy, tray title loop.
+- `src-tauri/tauri.conf.json`: window size and Tauri build/runtime config.
+- `src-tauri/capabilities/default.json`: allowed Tauri permissions.
+
+## Run And Verify
+
+- Web frontend only: `pnpm dev`
+- Frontend production build: `pnpm build`
+- Desktop dev app: `pnpm tauri dev`
+- Desktop production build: `pnpm tauri build`
+
+There is currently no automated test suite in this repo. For most changes, verify with `pnpm build`. If the change affects tray behavior, window visibility, autostart, sizing, or positioning, also verify manually in `pnpm tauri dev`.
+
+## Change Boundaries
+
+- Keep changes surgical. This is a small app with a shallow structure; avoid introducing abstractions unless a change clearly requires them.
+- Prefer editing the existing files above rather than creating new layers.
+- Do not hand-edit build output such as `dist/` or `src-tauri/target/`.
+- Preserve current app behavior unless the task explicitly changes it:
+  - fixed window size `392x490`
+  - transparent, undecorated, always-on-top tray window
+  - hide-on-blur behavior
+  - Chinese holiday scope
+
+## Notes For Future Agents
+
+- If a request mentions “calendar logic”, start in `src/lib/calendar.ts`.
+- If a request mentions “tray”, “menu bar”, “window show/hide”, or “position”, start in `src-tauri/src/main.rs`.
+- If a request is visual only, it is likely confined to `src/App.tsx` and `src/styles.css`.
+- If copy changes are requested, update both `zh` and `en` unless the task explicitly says otherwise.
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
