@@ -1,3 +1,4 @@
+import holidaySeed2026 from '../data/holidays/CN/2026.min.json';
 import type { Locale } from '../i18n';
 
 export type CalendarNoteType = 'public_holiday' | 'transfer_workday';
@@ -28,8 +29,32 @@ type HolidayRecord = {
   type?: string;
 };
 
+type HolidayPayload = {
+  year?: number;
+  dates?: HolidayRecord[];
+};
+
+type StoredHolidayRecords = {
+  records: HolidayRecord[];
+  fetchedAt: number;
+  source: 'seed' | 'remote';
+};
+
 const holidayCache = new Map<string, HolidayMap>();
-const holidayRecordCache = new Map<number, HolidayRecord[]>();
+const holidayRecordCache = new Map<number, StoredHolidayRecords>();
+const holidayRefreshTasks = new Map<number, Promise<StoredHolidayRecords | null>>();
+
+const holidaySeedPayloads: HolidayPayload[] = [holidaySeed2026];
+const holidaySeedRecordsByYear = new Map<number, HolidayRecord[]>();
+
+const holidayRecordStorageVersion = 'v1';
+const holidayRecordRefreshIntervalMs = 30 * 24 * 60 * 60 * 1000;
+
+for (const payload of holidaySeedPayloads) {
+  if (typeof payload.year === 'number' && Array.isArray(payload.dates)) {
+    holidaySeedRecordsByYear.set(payload.year, payload.dates);
+  }
+}
 
 function getMonthStart(month: Date) {
   return new Date(month.getFullYear(), month.getMonth(), 1);
@@ -98,23 +123,188 @@ function getHolidayName(record: HolidayRecord, locale: Locale) {
   return record.name_en ?? record.name;
 }
 
+function getHolidayRecordStorageKey(year: number) {
+  return `dayly:holiday-records:${holidayRecordStorageVersion}:${year}`;
+}
+
+function getLocalStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function isHolidayRecord(value: unknown): value is HolidayRecord {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return typeof record.date === 'string' && typeof record.name === 'string';
+}
+
+function normalizeHolidayRecords(records: unknown) {
+  if (!Array.isArray(records)) {
+    return [];
+  }
+
+  return records.filter(isHolidayRecord);
+}
+
+function invalidateHolidayMapCache(year: number) {
+  for (const locale of ['zh', 'en'] as const) {
+    holidayCache.delete(`${year}:${locale}`);
+  }
+}
+
+function cacheHolidayRecords(year: number, snapshot: StoredHolidayRecords) {
+  holidayRecordCache.set(year, snapshot);
+  invalidateHolidayMapCache(year);
+}
+
+function readStoredHolidayRecords(year: number) {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return null;
+  }
+
+  try {
+    const raw = storage.getItem(getHolidayRecordStorageKey(year));
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as {
+      records?: unknown;
+      fetchedAt?: unknown;
+      source?: unknown;
+    };
+
+    if (!Array.isArray(parsed.records)) {
+      return null;
+    }
+
+    const records = normalizeHolidayRecords(parsed.records);
+    const fetchedAt = typeof parsed.fetchedAt === 'number' ? parsed.fetchedAt : 0;
+    const source = parsed.source === 'seed' ? 'seed' : 'remote';
+
+    return { records, fetchedAt, source } satisfies StoredHolidayRecords;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredHolidayRecords(year: number, snapshot: StoredHolidayRecords) {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return;
+  }
+
+  try {
+    storage.setItem(getHolidayRecordStorageKey(year), JSON.stringify(snapshot));
+  } catch {
+    // Ignore persistence failures and continue with in-memory data.
+  }
+}
+
+function getSeedHolidayRecords(year: number) {
+  const records = holidaySeedRecordsByYear.get(year);
+
+  if (!records) {
+    return null;
+  }
+
+  return {
+    records,
+    fetchedAt: Date.now(),
+    source: 'seed'
+  } satisfies StoredHolidayRecords;
+}
+
+function shouldRefreshHolidayRecords(snapshot: StoredHolidayRecords) {
+  return Date.now() - snapshot.fetchedAt >= holidayRecordRefreshIntervalMs;
+}
+
+async function fetchRemoteHolidayRecords(year: number) {
+  const response = await fetch(`https://unpkg.com/holiday-calendar/data/CN/${year}.json`);
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = (await response.json()) as HolidayPayload;
+
+  return {
+    records: normalizeHolidayRecords(payload.dates),
+    fetchedAt: Date.now(),
+    source: 'remote'
+  } satisfies StoredHolidayRecords;
+}
+
+async function refreshHolidayRecords(year: number) {
+  const existingTask = holidayRefreshTasks.get(year);
+
+  if (existingTask) {
+    return existingTask;
+  }
+
+  const task = fetchRemoteHolidayRecords(year)
+    .then((snapshot) => {
+      if (!snapshot) {
+        return null;
+      }
+
+      cacheHolidayRecords(year, snapshot);
+      writeStoredHolidayRecords(year, snapshot);
+      return snapshot;
+    })
+    .catch(() => null)
+    .finally(() => {
+      holidayRefreshTasks.delete(year);
+    });
+
+  holidayRefreshTasks.set(year, task);
+  return task;
+}
+
 async function getHolidayRecordsForYear(year: number) {
   const cached = holidayRecordCache.get(year);
 
   if (cached) {
-    return cached;
+    if (shouldRefreshHolidayRecords(cached)) {
+      void refreshHolidayRecords(year);
+    }
+
+    return cached.records;
   }
 
-  const response = await fetch(`https://unpkg.com/holiday-calendar/data/CN/${year}.json`);
+  const stored = readStoredHolidayRecords(year);
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch holiday data for ${year}`);
+  if (stored) {
+    cacheHolidayRecords(year, stored);
+
+    if (shouldRefreshHolidayRecords(stored)) {
+      void refreshHolidayRecords(year);
+    }
+
+    return stored.records;
   }
 
-  const payload = (await response.json()) as { dates?: HolidayRecord[] };
-  const records = Array.isArray(payload.dates) ? payload.dates : [];
-  holidayRecordCache.set(year, records);
-  return records;
+  const seed = getSeedHolidayRecords(year);
+
+  if (seed) {
+    cacheHolidayRecords(year, seed);
+    writeStoredHolidayRecords(year, seed);
+    return seed.records;
+  }
+
+  const refreshed = await refreshHolidayRecords(year);
+  return refreshed?.records ?? [];
 }
 
 export async function getHolidaysForYear(year: number, locale: Locale): Promise<HolidayMap> {
