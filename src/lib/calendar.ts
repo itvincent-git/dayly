@@ -49,6 +49,11 @@ const holidaySeedRecordsByYear = new Map<number, HolidayRecord[]>();
 
 const holidayRecordStorageVersion = 'v1';
 const holidayRecordRefreshIntervalMs = 30 * 24 * 60 * 60 * 1000;
+const holidayRequestTimeoutMs = 8000;
+const holidayRemoteSources = [
+  'https://unpkg.com/holiday-calendar/data/CN',
+  'https://cdn.jsdelivr.net/npm/holiday-calendar/data/CN'
+] as const;
 
 for (const payload of holidaySeedPayloads) {
   if (typeof payload.year === 'number' && Array.isArray(payload.dates)) {
@@ -231,19 +236,34 @@ function shouldRefreshHolidayRecords(snapshot: StoredHolidayRecords) {
 }
 
 async function fetchRemoteHolidayRecords(year: number) {
-  const response = await fetch(`https://unpkg.com/holiday-calendar/data/CN/${year}.json`);
+  for (const baseUrl of holidayRemoteSources) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, holidayRequestTimeoutMs);
 
-  if (!response.ok) {
-    return null;
+    try {
+      const response = await fetch(`${baseUrl}/${year}.json`, { signal: controller.signal });
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const payload = (await response.json()) as HolidayPayload;
+
+      return {
+        records: normalizeHolidayRecords(payload.dates),
+        fetchedAt: Date.now(),
+        source: 'remote'
+      } satisfies StoredHolidayRecords;
+    } catch {
+      // Try the next source on timeout or network failure.
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
 
-  const payload = (await response.json()) as HolidayPayload;
-
-  return {
-    records: normalizeHolidayRecords(payload.dates),
-    fetchedAt: Date.now(),
-    source: 'remote'
-  } satisfies StoredHolidayRecords;
+  return null;
 }
 
 async function refreshHolidayRecords(year: number) {
@@ -307,15 +327,7 @@ async function getHolidayRecordsForYear(year: number) {
   return refreshed?.records ?? [];
 }
 
-export async function getHolidaysForYear(year: number, locale: Locale): Promise<HolidayMap> {
-  const cacheKey = `${year}:${locale}`;
-  const cached = holidayCache.get(cacheKey);
-
-  if (cached) {
-    return cached;
-  }
-
-  const records = await getHolidayRecordsForYear(year);
+function buildHolidayMap(records: HolidayRecord[], locale: Locale) {
   const holidays = new Map<string, CalendarNote>();
 
   for (const record of records) {
@@ -329,6 +341,32 @@ export async function getHolidaysForYear(year: number, locale: Locale): Promise<
     });
   }
 
+  return holidays;
+}
+
+export async function getHolidaysForYear(year: number, locale: Locale): Promise<HolidayMap> {
+  const cacheKey = `${year}:${locale}`;
+  const cached = holidayCache.get(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
+  const records = await getHolidayRecordsForYear(year);
+  const holidays = buildHolidayMap(records, locale);
+
   holidayCache.set(cacheKey, holidays);
+  return holidays;
+}
+
+export async function refreshHolidaysForYear(year: number, locale: Locale): Promise<HolidayMap> {
+  const snapshot = await refreshHolidayRecords(year);
+
+  if (!snapshot) {
+    throw new Error(`Unable to refresh holiday records for ${year}`);
+  }
+
+  const holidays = buildHolidayMap(snapshot.records, locale);
+  holidayCache.set(`${year}:${locale}`, holidays);
   return holidays;
 }

@@ -1,10 +1,18 @@
 import { startTransition, useEffect, useMemo, useState } from 'react';
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart';
-import { addMonths, buildCalendarDays, getHolidaysForYear, getMonthLabel, type HolidayMap } from './lib/calendar';
+import {
+  addMonths,
+  buildCalendarDays,
+  getHolidaysForYear,
+  getMonthLabel,
+  refreshHolidaysForYear,
+  type HolidayMap
+} from './lib/calendar';
 import { localeStorageKey, messages, type Locale } from './i18n';
 import appIcon from '../src-tauri/icons/app-icon.svg';
 
 type Page = 'calendar' | 'settings';
+type HolidayRefreshState = 'idle' | 'loading' | 'success' | 'error';
 
 function SettingsIcon() {
   return (
@@ -64,8 +72,10 @@ function App() {
   const [holidays, setHolidays] = useState<HolidayMap>(new Map());
   const [autostartEnabled, setAutostartEnabled] = useState(false);
   const [autostartLoaded, setAutostartLoaded] = useState(false);
+  const [holidayRefreshState, setHolidayRefreshState] = useState<HolidayRefreshState>('idle');
 
   const copy = messages[locale];
+  const visibleYear = visibleMonth.getFullYear();
   const days = useMemo(() => buildCalendarDays(visibleMonth, holidays), [visibleMonth, holidays]);
   const monthHolidayCount = useMemo(
     () => days.filter((day) => day.isCurrentMonth && day.note?.type === 'public_holiday').length,
@@ -77,6 +87,14 @@ function App() {
   );
 
   const monthSummary = copy.monthSummary(monthHolidayCount, monthWorkdayCount);
+  const holidayRefreshHint =
+    holidayRefreshState === 'loading'
+      ? copy.refreshing
+      : holidayRefreshState === 'success'
+        ? copy.refreshSuccess
+        : holidayRefreshState === 'error'
+          ? copy.refreshError
+          : copy.refreshHolidaysHint(visibleYear);
 
   useEffect(() => {
     localStorage.setItem(localeStorageKey, locale);
@@ -107,8 +125,9 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
+    setHolidayRefreshState('idle');
 
-    void getHolidaysForYear(visibleMonth.getFullYear(), locale)
+    void getHolidaysForYear(visibleYear, locale)
       .then((result) => {
         if (!cancelled) {
           setHolidays(result);
@@ -123,7 +142,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [locale, visibleMonth]);
+  }, [locale, visibleYear]);
 
   async function handleAutostartToggle(nextValue: boolean) {
     if (nextValue) {
@@ -141,6 +160,23 @@ function App() {
     startTransition(() => {
       setVisibleMonth((current) => addMonths(current, offset));
     });
+  }
+
+  async function handleHolidayRefresh() {
+    setHolidayRefreshState('loading');
+
+    try {
+      const refreshed = await refreshHolidaysForYear(visibleYear, locale);
+
+      startTransition(() => {
+        setHolidays(refreshed);
+        setHolidayRefreshState('success');
+      });
+    } catch {
+      startTransition(() => {
+        setHolidayRefreshState('error');
+      });
+    }
   }
 
   return (
@@ -281,6 +317,26 @@ function App() {
                     EN
                   </button>
                 </div>
+              </div>
+
+              <div className="settings-divider" aria-hidden="true" />
+
+              <div className="settings-row">
+                <div>
+                  <p className="section-label">{copy.refreshHolidays}</p>
+                  <p className="utility-hint">{holidayRefreshHint}</p>
+                </div>
+
+                <button
+                  type="button"
+                  className="secondary-button settings-button"
+                  disabled={holidayRefreshState === 'loading'}
+                  onClick={() => {
+                    void handleHolidayRefresh();
+                  }}
+                >
+                  {holidayRefreshState === 'loading' ? copy.refreshing : copy.refreshNow}
+                </button>
               </div>
 
               <div className="settings-divider" aria-hidden="true" />
