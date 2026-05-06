@@ -76,6 +76,11 @@ function App() {
 
   const copy = messages[locale];
   const visibleYear = visibleMonth.getFullYear();
+  const visibleMonthIsCurrent = (() => {
+    const today = new Date();
+
+    return visibleMonth.getFullYear() === today.getFullYear() && visibleMonth.getMonth() === today.getMonth();
+  })();
   const days = useMemo(() => buildCalendarDays(visibleMonth, holidays), [visibleMonth, holidays]);
   const monthHolidayCount = useMemo(
     () => days.filter((day) => day.isCurrentMonth && day.note?.type === 'public_holiday').length,
@@ -233,7 +238,9 @@ function App() {
 
                 <div className="calendar-heading">
                   <p className="section-label">{copy.appName}</p>
-                  <div className="calendar-title">{getMonthLabel(visibleMonth, locale, copy.months)}</div>
+                  <div className={['calendar-title', visibleMonthIsCurrent ? 'current-month' : ''].filter(Boolean).join(' ')}>
+                    {getMonthLabel(visibleMonth, locale, copy.months)}
+                  </div>
                 </div>
 
                 <button

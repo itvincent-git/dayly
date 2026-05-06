@@ -421,8 +421,20 @@ button {
 }
 
 .calendar-title {
+  justify-self: center;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
   font-size: 18px;
   font-weight: 700;
+}
+
+.calendar-title.current-month {
+  color: var(--surface-lowest);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dim) 100%);
+  box-shadow: 0 10px 20px rgba(0, 91, 193, 0.18);
 }
 
 .nav-button {
